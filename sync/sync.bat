@@ -30,14 +30,14 @@ echo Uncommitted changes detected. Starting sync...
 REM Create a temporary list of files (excluding .gitignore patterns)
 git ls-files --cached --others --exclude-standard > temp_filelist.txt
 
+REM Add files in INCLUDE_FILE (like .env files that might be gitignored)
+if exist "%INCLUDE_FILE%" (
+    type "%INCLUDE_FILE%" >> temp_filelist.txt
+)
+
 REM Filter out EXCLUDE_GENERATED files
 findstr /v /i "%EXCLUDE_GENERATED:,= %" temp_filelist.txt > filelist.txt 2>nul || copy temp_filelist.txt filelist.txt >nul
 del temp_filelist.txt
-
-REM If include.txt exists, append those files
-if exist "%INCLUDE_FILE%" (
-    type "%INCLUDE_FILE%" >> filelist.txt
-)
 
 REM Use tar over ssh to send all files at once
 tar -cf - -T filelist.txt | ssh %REMOTE_USER%@%REMOTE_IP% "tar -xf - -C %REMOTE_DIR%"
