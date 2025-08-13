@@ -7,11 +7,6 @@ error() {
     exit 1
 }
 
-# Check if script is run as root
-if [ "$(id -u)" = 0 ]; then
-    error "This script should not be run as root or with sudo"
-fi
-
 # Check if Docker is already installed
 if command -v docker >/dev/null 2>&1; then
     echo "Docker is already installed. Version: $(docker --version)"
