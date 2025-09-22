@@ -4,7 +4,9 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-KAFKA_VERSION="3.7.0"
+# https://www.apache.org/dyn/closer.cgi?path=/kafka/4.1.0/kafka_2.13-4.1.0.tgz
+
+KAFKA_VERSION="4.1.0"
 SCALA_VERSION="2.13"
 KAFKA_DIR="/opt/kafka"
 
@@ -20,7 +22,7 @@ sudo mkdir -p $KAFKA_DIR
 cd /tmp
 
 echo "=== Downloading Kafka $KAFKA_VERSION ==="
-wget https://downloads.apache.org/kafka/$KAFKA_VERSION/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
+wget https://www.apache.org/dyn/closer.cgi?path=/kafka/4.1.0/kafka_2.13-4.1.0.tgz
 
 echo "=== Extracting Kafka ==="
 tar -xvzf kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
