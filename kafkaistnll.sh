@@ -1,14 +1,14 @@
 #!/bin/bash
-# Kafka installation script for Ubuntu
+# Kafka installation script for Ubuntu (KRaft mode, no ZooKeeper)
 
-# Exit immediately if a command exits with a non-zero status
 set -e
 
-# https://www.apache.org/dyn/closer.cgi?path=/kafka/4.1.0/kafka_2.13-4.1.0.tgz
-
+KAFKA_DIR="/opt/kafka"
+KAFKA_CONFIG_DIR="$KAFKA_DIR/config/kraft"
+KAFKA_CONFIG_FILE="$KAFKA_CONFIG_DIR/server.properties"
+KAFKA_DATA_DIR="/var/lib/kafka/data"
 KAFKA_VERSION="4.1.0"
 SCALA_VERSION="2.13"
-KAFKA_DIR="/opt/kafka"
 
 echo "=== Updating system ==="
 sudo apt update -y
@@ -22,58 +22,69 @@ sudo mkdir -p $KAFKA_DIR
 cd /tmp
 
 echo "=== Downloading Kafka $KAFKA_VERSION ==="
-wget https://dlcdn.apache.org/kafka/4.1.0/kafka_2.13-4.1.0.tgz
+wget https://dlcdn.apache.org/kafka/$KAFKA_VERSION/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
 
 echo "=== Extracting Kafka ==="
-tar -xvzf kafka_2.13-4.1.0.tgz
-sudo mv kafka_2.13-4.1.0/* $KAFKA_DIR
-rm -rf kafka_2.13-4.1.0*
+tar -xvzf kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
+sudo mv kafka_${SCALA_VERSION}-${KAFKA_VERSION}/* $KAFKA_DIR
+rm -rf kafka_${SCALA_VERSION}-${KAFKA_VERSION}*
 
-echo "=== Creating systemd services for Zookeeper and Kafka ==="
+echo "=== Creating KRaft config directory and server.properties ==="
+sudo mkdir -p $KAFKA_CONFIG_DIR
+sudo mkdir -p $KAFKA_DATA_DIR
 
-# Zookeeper service
-cat <<EOF | sudo tee /etc/systemd/system/zookeeper.service
+sudo tee $KAFKA_CONFIG_FILE > /dev/null <<EOF
+# Unique node ID for this broker
+node.id=1
+
+# Run both broker and controller
+process.roles=broker,controller
+
+# Listeners: broker on 9092, controller on 9093
+listeners=PLAINTEXT://:9092,CONTROLLER://:9093
+advertised.listeners=PLAINTEXT://localhost:9092
+
+# Controller quorum (single node)
+controller.listener.names=CONTROLLER
+controller.quorum.voters=1@localhost:9093
+
+# Data directory
+log.dirs=$KAFKA_DATA_DIR
+EOF
+
+echo "=== Generating cluster ID ==="
+CLUSTER_ID=$($KAFKA_DIR/bin/kafka-storage.sh random-uuid)
+echo "Cluster ID: $CLUSTER_ID"
+
+echo "=== Formatting Kafka storage ==="
+sudo $KAFKA_DIR/bin/kafka-storage.sh format \
+  -t $CLUSTER_ID \
+  -c $KAFKA_CONFIG_FILE
+
+echo "=== Creating systemd service for Kafka ==="
+sudo tee /etc/systemd/system/kafka.service > /dev/null <<EOF
 [Unit]
-Description=Apache Zookeeper server
+Description=Apache Kafka (KRaft mode)
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$KAFKA_DIR/bin/zookeeper-server-start.sh $KAFKA_DIR/config/zookeeper.properties
-ExecStop=$KAFKA_DIR/bin/zookeeper-server-stop.sh
-Restart=on-abnormal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Kafka service
-cat <<EOF | sudo tee /etc/systemd/system/kafka.service
-[Unit]
-Description=Apache Kafka server
-Requires=zookeeper.service
-After=zookeeper.service
-
-[Service]
-Type=simple
-ExecStart=$KAFKA_DIR/bin/kafka-server-start.sh $KAFKA_DIR/config/server.properties
+ExecStart=$KAFKA_DIR/bin/kafka-server-start.sh $KAFKA_CONFIG_FILE
 ExecStop=$KAFKA_DIR/bin/kafka-server-stop.sh
 Restart=on-abnormal
+User=root
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-echo "=== Reloading systemd and enabling services ==="
+echo "=== Reloading systemd and enabling Kafka service ==="
 sudo systemctl daemon-reexec
-sudo systemctl enable zookeeper
 sudo systemctl enable kafka
 
-echo "=== Starting Zookeeper and Kafka ==="
-sudo systemctl start zookeeper
+echo "=== Starting Kafka ==="
 sudo systemctl start kafka
 
 echo "=== Installation complete! ==="
-echo "Use the following commands to check status:"
-echo "  sudo systemctl status zookeeper"
-echo "  sudo systemctl status kafka"
+echo "Check Kafka status with: sudo systemctl status kafka"
+echo "Kafka is listening on port 9092 (PLAINTEXT)"
