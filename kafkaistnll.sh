@@ -22,12 +22,12 @@ sudo mkdir -p $KAFKA_DIR
 cd /tmp
 
 echo "=== Downloading Kafka $KAFKA_VERSION ==="
-wget https://www.apache.org/dyn/closer.cgi?path=/kafka/4.1.0/kafka_2.13-4.1.0.tgz
+wget https://dlcdn.apache.org/kafka/4.1.0/kafka_2.13-4.1.0.tgz
 
 echo "=== Extracting Kafka ==="
-tar -xvzf kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
-sudo mv kafka_${SCALA_VERSION}-${KAFKA_VERSION}/* $KAFKA_DIR
-rm -rf kafka_${SCALA_VERSION}-${KAFKA_VERSION}*
+tar -xvzf kafka_2.13-4.1.0.tgz
+sudo mv kafka_2.13-4.1.0/* $KAFKA_DIR
+rm -rf kafka_2.13-4.1.0*
 
 echo "=== Creating systemd services for Zookeeper and Kafka ==="
 
